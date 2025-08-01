@@ -47,7 +47,7 @@ class PromptServer(server.PromptServer):
 
     def send_sync(self, event, data, sid=None):
         if self.current_session is None:
-            logging.warning("No current session to send sync message to.")
+            return
 
         if not (event == BinaryEventTypes.UNENCODED_PREVIEW_IMAGE or 
                 event == BinaryEventTypes.PREVIEW_IMAGE_WITH_METADATA or 
@@ -56,7 +56,3 @@ class PromptServer(server.PromptServer):
                 self.current_session.progress(json.dumps({"type": event, "data": data}))
             except Exception as e:
                 logging.error(f"Error sending sync message: {e}")
-            
-
-
-

@@ -75,15 +75,9 @@ class TaskContext:
         return f"TaskContext(task_id={self.task_id}, session={self.session}, context={self.context})"
 
 class PromptExecutor(execution.PromptExecutor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.context = None
 
-    async def execute_async(self, prompt, prompt_id, extra_data={}, execute_outputs=[], client_id=None):
+    async def execute_async(self, prompt, prompt_id, extra_data={}, execute_outputs=[]):
         nodes.interrupt_processing(False)
-
-        self.server.set_current_session(task_context.session)
-        self.server.client_id = client_id
 
         self.status_messages = []
         self.add_message("execution_start", { "prompt_id": prompt_id}, broadcast=False)
@@ -182,9 +176,15 @@ async def comfy_execute_prompt(session: WorkerSession, prompt: object, extra_dat
 
     executor.server.last_prompt_id = task_context.task_id
     
+    executor.server.set_current_session(session)
+    executor.server.client_id = client_id
+
     ui_outputs, meta_outputs, execute_error = await executor.execute_async(
-        prompt, task_context.task_id, extra_data, outputs_to_execute, client_id=client_id
+        prompt, task_context.task_id, extra_data, outputs_to_execute
     )
+
+    executor.server.set_current_session(None)
+    executor.server.client_id = None
 
     current_time = time.perf_counter()
     if (current_time - last_gc_collect) > gc_collect_interval:

@@ -10,6 +10,9 @@ export PATH=/usr/local/cuda-12.8/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda-12.8/lib64:$LD_LIBRARY_PATH
 export CUDA_HOME=/usr/local/cuda-12.8
 export HF_ENDPOINT=https://hf-mirror.com
+export TASKQ_SERVER_URL=quickposer.com:10087
+export TASKQ_ACCESS_KEY=<你的租户token>              # 登录 你的租户账户后创建
+export TASKQ_WORKER_GROUP=<你自定义的workgroup名字>  # 默认可以填group1
 
 # 当有多张GPU卡的时候，可以通过此方式来指定使用的GPU
 export CUDA_VISIBLE_DEVICES=0
