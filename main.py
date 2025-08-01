@@ -133,7 +133,7 @@ if __name__ == '__main__':
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     server = worker_server.PromptServer(loop)
-
+    folder_paths.add_model_folder_path("custom_nodes", os.path.join(os.path.dirname(__file__), "custom_nodes"))
     hook_breaker_ac10a0.save_functions()
     nodes.init_extra_nodes(
         init_custom_nodes=(not args.disable_all_custom_nodes) or len(args.whitelist_custom_nodes) > 0,
