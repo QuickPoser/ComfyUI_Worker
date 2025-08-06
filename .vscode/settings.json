@@ -1,0 +1,12 @@
+{
+    "python.analysis.extraPaths": [
+        // "${env:HOME}/ComfyUI"
+        "D:/ComfyUI-aki/ComfyUI"
+    ],
+    // "python.defaultInterpreterPath": "${env:HOME}/venv/bin/python",
+    "python.defaultInterpreterPath": "D:/ComfyUI-aki/python/python.ext",
+    "terminal.integrated.env.linux": {
+        // "PYTHONPATH": "${env:HOME}/ComfyUI"
+        "PYTHONPATH": "D:/ComfyUI-aki/ComfyUI"
+    }
+}

@@ -72,13 +72,13 @@ D:\ComfyUI-aki\python\python.exe get-pip.py
   * **对于 ComfyUI 官方整合包：**
 
     ```cmd
-    D:\ComfyUI_windows_portable\python_embeded\python.exe -m pip install -r D:\ComfyUI_windows_portable\ComfyUI_Worker\requirements.txt
+    D:\ComfyUI_windows_portable\python_embeded\python.exe -m pip install -r D:\ComfyUI_Worker\requirements.txt
     ```
 
   * **对于秋叶启动器整合包：**
 
     ```cmd
-    D:\ComfyUI-aki\python\python.exe -m pip install -r D:\ComfyUI-aki\ComfyUI_Worker\requirements.txt
+    D:\ComfyUI-aki\python\python.exe -m pip install -r D:\ComfyUI_Worker\requirements.txt
     ```
 
 ### **四、 配置启动脚本**
@@ -92,7 +92,7 @@ chcp 65001
 :: ========================== ↓↓↓ 请根据您的实际情况修改此区域的配置 ↓↓↓ ==========================
 
 :: 1. 核心路径设置 (请务必使用您的实际绝对路径)
-set "WORKER_DIR=D:\ComfyUI_windows_portable\ComfyUI_Worker"
+set "WORKER_DIR=D:\ComfyUI_Worker"
 set "COMFYUI_DIR=D:\ComfyUI_windows_portable\ComfyUI"
 set "PYTHON_EXE=D:\ComfyUI_windows_portable\python_embeded\python.exe"
 
