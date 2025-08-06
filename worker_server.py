@@ -53,7 +53,7 @@ class PromptServer(server.PromptServer):
                 event == BinaryEventTypes.PREVIEW_IMAGE_WITH_METADATA or 
                 isinstance(data, (bytes, bytearray))):
             try:
-                json_data = json.dumps(json.dumps({"type": event, "data": data}))
+                json_data = json.dumps({"type": event, "data": data})
                 if len(json_data) > 1024 * 1024: # 1MB limit
                     logging.warning("Data too large to send as JSON, dropped: {}".format(len(json_data)))
                     return
@@ -61,3 +61,7 @@ class PromptServer(server.PromptServer):
                 self.current_session.progress(json_data)
             except Exception as e:
                 logging.error(f"Error sending sync message: {e}")
+            
+
+
+
