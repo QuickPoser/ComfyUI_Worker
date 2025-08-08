@@ -357,10 +357,10 @@ class TunnelRequest:
         if not self._aborted.is_set():
             # 发送最终块
             self._send_final_chunk(resp.status_code, chunk_index, total_sent)
-            self._log_completion(
-                "Streaming", resp.status_code, start_time, 
-                total_sent, total_sent, url, chunk_index + 1
-            )
+            #self._log_completion(
+            #    "Streaming", resp.status_code, start_time, 
+            #    total_sent, total_sent, url, chunk_index + 1
+            #)
                 
     def _prepare_headers(self, original_headers, compression_headers: dict) -> list:
         """准备响应头"""
@@ -431,7 +431,7 @@ class TunnelRequest:
         if original_size > 0 and final_size != original_size:
             compression_ratio = final_size / original_size
             compression_ratio_info = f", compression_ratio={compression_ratio:.2f}"
-        
+                
         logger.info(
             f"[TunnelRequest][{self.req_id}] {response_type} response completed: "
             f"status={status_code}, time={cost:.2f}s, "

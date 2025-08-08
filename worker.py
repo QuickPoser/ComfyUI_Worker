@@ -178,9 +178,13 @@ async def comfy_execute_prompt(session: WorkerSession, prompt: object, extra_dat
     
     executor.server.set_current_session(session)
     executor.server.client_id = client_id
+    prompt_id = task_context.task_id
 
     ui_outputs, meta_outputs, execute_error = await executor.execute_async(
-        prompt, task_context.task_id, extra_data, outputs_to_execute
+        prompt, prompt_id, extra_data, outputs_to_execute
+    )
+    executor.server.send_sync(
+        "executing", {"node": None, "prompt_id": prompt_id}
     )
 
     executor.server.set_current_session(None)
