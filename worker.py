@@ -17,9 +17,16 @@ from comfy.cli_args import args
 
 def get_info():
     import os
+    try:
+        import comfyui_version
+        comfyui_version = comfyui_version.__version__
+    except ImportError:
+        comfyui_version = "unknown"
     info = {
         "envrions": {key: value for key, value in os.environ.items()},
         "command_line": sys.executable + " " + " ".join(sys.argv),
+        "comfyui_version": comfyui_version,
+        "worker_version": "0.3.49",
     }
     return json.dumps(info)
 
