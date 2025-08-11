@@ -26,7 +26,7 @@ def get_info():
         "envrions": {key: value for key, value in os.environ.items()},
         "command_line": sys.executable + " " + " ".join(sys.argv),
         "comfyui_version": comfyui_version,
-        "worker_version": "0.3.49",
+        "worker_version": "0.3.49c",
     }
     return json.dumps(info)
 
