@@ -21,7 +21,7 @@ class PromptServer(server.PromptServer):
             json_data =  await request.json()
             if "prompt" in json_data:
                 prompt = json_data["prompt"]
-                valid = await execution.validate_prompt("", prompt)
+                valid = await execution.validate_prompt("", prompt, None)
                 if not valid[0]:                    
                     return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
             else:

@@ -46,7 +46,8 @@ origin_get_input_data = execution.get_input_data
 
 def get_input_data(inputs, class_def, unique_id, outputs=None, dynprompt=None, extra_data={}):
     global task_context
-    input_data_all, missing_keys = origin_get_input_data(inputs, class_def, unique_id, outputs, dynprompt, extra_data)
+    result = origin_get_input_data(inputs, class_def, unique_id, outputs, dynprompt, extra_data)
+    input_data_all = result[0]
 
     valid_inputs = class_def.INPUT_TYPES()
     if "hidden" in valid_inputs:
@@ -55,7 +56,7 @@ def get_input_data(inputs, class_def, unique_id, outputs=None, dynprompt=None, e
             if h[x] == "TASK_CONTEXT":
                 input_data_all[x] = [task_context]
 
-    return input_data_all, missing_keys
+    return result
 
 execution.get_input_data = get_input_data
 
@@ -76,88 +77,38 @@ class TaskContext:
 
 class PromptExecutor(execution.PromptExecutor):
 
-    async def execute_async(self, prompt, prompt_id, extra_data={}, execute_outputs=[]):
-        nodes.interrupt_processing(False)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.last_execute_error = None
 
-        self.status_messages = []
-        self.add_message("execution_start", { "prompt_id": prompt_id}, broadcast=False)
+    def handle_execution_error(self, prompt_id, prompt, current_outputs, executed, error, ex):
+        super().handle_execution_error(prompt_id, prompt, current_outputs, executed, error, ex)
+        self.last_execute_error = {
+            "prompt_id": prompt_id,
+            "prompt": prompt,
+            "current_outputs": current_outputs,
+            "executed": executed,
+            "error": error,
+            "exception": ex
+        }
 
-        with torch.inference_mode():
-            dynamic_prompt = DynamicPrompt(prompt)
-            reset_progress_state(prompt_id, dynamic_prompt)
-            add_progress_handler(WebUIProgressHandler(self.server))
-            is_changed_cache = IsChangedCache(prompt_id, dynamic_prompt, self.caches.outputs)
-            for cache in self.caches.all:
-                await cache.set_prompt(dynamic_prompt, prompt.keys(), is_changed_cache)
-                cache.clean_unused()
+    async def execute_async(self, prompt, prompt_id, extra_data={}, execute_outputs=[], client_id=None):        
+        self.last_execute_error = None
+        self.history_result = {}
+        extra_data["client_id"] = client_id
 
-            cached_nodes = []
-            for node_id in prompt:
-                if self.caches.outputs.get(node_id) is not None:
-                    cached_nodes.append(node_id)
+        await super().execute_async(prompt, prompt_id, extra_data=extra_data, execute_outputs=execute_outputs)
 
-            comfy.model_management.cleanup_models_gc()
-            self.add_message("execution_cached",
-                          { "nodes": cached_nodes, "prompt_id": prompt_id},
-                          broadcast=False)
-            pending_subgraph_results = {}
-            pending_async_nodes = {} # TODO - Unify this with pending_subgraph_results
-            executed = set()
-            execution_list = ExecutionList(dynamic_prompt, self.caches.outputs)
-            current_outputs = self.caches.outputs.all_node_ids()
-            for node_id in list(execute_outputs):
-                execution_list.add_node(node_id)
-
-            exuecute_error = None
-            while not execution_list.is_empty():
-                node_id, error, ex = await execution_list.stage_node_execution()
-                if error is not None:
-                    self.handle_execution_error(prompt_id, dynamic_prompt.original_prompt, current_outputs, executed, error, ex)
-                    break
-
-                assert node_id is not None, "Node ID should not be None at this point"
-                result, error, ex = await execute(self.server, dynamic_prompt, self.caches, node_id, extra_data, executed, prompt_id, execution_list, pending_subgraph_results, pending_async_nodes)
-                self.success = result != ExecutionResult.FAILURE
-                if result == ExecutionResult.FAILURE:
-                    self.handle_execution_error(prompt_id, dynamic_prompt.original_prompt, current_outputs, executed, error, ex)
-                    exuecute_error = {
-                        "node_id": node_id,
-                        "error": error,
-                        "exception": ex
-                    }
-
-                    break
-                elif result == ExecutionResult.PENDING:
-                    execution_list.unstage_node_execution()
-                else: # result == ExecutionResult.SUCCESS:
-                    execution_list.complete_node_execution()
-            else:
-                # Only execute when the while-loop ends without break
-                self.add_message("execution_success", { "prompt_id": prompt_id }, broadcast=False)
-
-            ui_outputs = {}
-            meta_outputs = {}
-            all_node_ids = self.caches.ui.all_node_ids()
-            for node_id in all_node_ids:
-                ui_info = self.caches.ui.get(node_id)
-                if ui_info is not None:
-                    ui_outputs[node_id] = ui_info["output"]
-                    meta_outputs[node_id] = ui_info["meta"]
-            self.history_result = {
-                "outputs": ui_outputs,
-                "meta": meta_outputs,
-            }
-            self.server.last_node_id = None
-            if comfy.model_management.DISABLE_SMART_MEMORY:
-                comfy.model_management.unload_all_models()
-
-            return (ui_outputs, meta_outputs, exuecute_error)
+        execute_error = self.last_execute_error
+        ui_outputs = self.history_result.get("outputs", None)
+        meta_outputs = self.history_result.get("meta_outputs", None)
+        return (ui_outputs, meta_outputs, execute_error)
 
 @taskq.task()
 async def comfy_execute_prompt(session: WorkerSession, prompt: object, extra_data: object, context: object, client_id=None, **kwargs):
     global task_context, last_gc_collect
 
-    valid, err, outputs_to_execute, node_errors = await execution.validate_prompt(session.current_task_id, prompt)
+    valid, err, outputs_to_execute, node_errors = await execution.validate_prompt(session.current_task_id, prompt, None)
     if not valid or len(node_errors) > 0:
         return {
             "status": "validation_error",
@@ -175,13 +126,12 @@ async def comfy_execute_prompt(session: WorkerSession, prompt: object, extra_dat
     torch.set_default_dtype(torch.float32)
 
     executor.server.last_prompt_id = task_context.task_id
-    
     executor.server.set_current_session(session)
-    executor.server.client_id = client_id
+    
     prompt_id = task_context.task_id
 
     ui_outputs, meta_outputs, execute_error = await executor.execute_async(
-        prompt, prompt_id, extra_data, outputs_to_execute
+        prompt, prompt_id, extra_data, outputs_to_execute, client_id
     )
     executor.server.send_sync(
         "executing", {"node": None, "prompt_id": prompt_id}
