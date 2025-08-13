@@ -9,10 +9,7 @@ import nodes
 
 from taskq import TaskQ, WorkerSession, TaskCancel
 import execution
-from execution import ExecutionResult, IsChangedCache, IsChangedCache, execute
 import comfy.model_management
-from comfy_execution.graph import ExecutionList, DynamicPrompt
-from comfy_execution.progress import reset_progress_state, add_progress_handler, WebUIProgressHandler
 from comfy.cli_args import args
 
 def get_info():
@@ -23,10 +20,14 @@ def get_info():
     except ImportError:
         comfyui_version = "unknown"
     info = {
-        "envrions": {key: value for key, value in os.environ.items()},
+        "envrions": {
+            key: value
+            for key, value in os.environ.items()
+            if "TOKEN" not in key.upper()
+        },
         "command_line": sys.executable + " " + " ".join(sys.argv),
         "comfyui_version": comfyui_version,
-        "worker_version": "0.3.49c",
+        "worker_version": "0.3.49d",
     }
     return json.dumps(info)
 
@@ -173,5 +174,12 @@ async def comfy_execute_prompt(session: WorkerSession, prompt: object, extra_dat
 
 def run(server, loop: asyncio.AbstractEventLoop):
     global executor
-    executor = PromptExecutor(server, cache_type=execution.CacheType.LRU, cache_size=args.cache_lru)
+
+    cache_type = execution.CacheType.CLASSIC
+    if args.cache_lru > 0:
+        cache_type = execution.CacheType.LRU
+    elif args.cache_none:
+        cache_type = execution.CacheType.DEPENDENCY_AWARE
+
+    executor = PromptExecutor(server, cache_type=cache_type, cache_size=args.cache_lru)
     taskq.run(loop)
