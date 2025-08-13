@@ -3,6 +3,8 @@ import logging
 import time
 import queue
 import asyncio
+import traceback
+import sys
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -10,6 +12,12 @@ import env
 import grpc
 
 from comfygw_proto import taskq_pb2, taskq_pb2_grpc, utils_pb2
+
+def full_type_name(klass):
+    module = klass.__module__
+    if module == 'builtins':
+        return klass.__qualname__
+    return module + '.' + klass.__qualname__
 
 class TaskCancel(Exception):
     pass
@@ -54,9 +62,16 @@ class TaskQ(object):
         except TaskCancel as e:
             logging.info(f"[TaskQ] Task '{func_name}' canceled: {e}")
             raise e
-        except Exception as e:
-            logging.exception(f"[TaskQ] Exception in task '{func_name}': {e}")
-            err = str(e)
+        except Exception as ex:
+            logging.exception(f"[TaskQ] Exception in task '{func_name}': {ex}")
+
+            typ, _, tb = sys.exc_info()
+            exception_type = full_type_name(typ)
+            err = {
+                "exception_message": "{}".format(ex),
+                "exception_type": exception_type,
+                "traceback": traceback.format_tb(tb),
+            }
 
         logging.info(f"[TaskQ] End task: {func_name} result: {short_string(str(ret))} error: {err}")
         return ret, err
@@ -192,7 +207,7 @@ class WorkerSession(object):
             result = taskq_pb2.TaskResult(
                 taskId=task_id,
                 code=0 if err is None else 1,
-                error=str(err),
+                error=json.dumps(err),
                 result=json.dumps(ret),
             )
             logging.info(f"[WorkerSession] Task {task_id} end, result: {short_string(str(result))}")
